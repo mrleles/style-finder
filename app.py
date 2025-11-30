@@ -31,11 +31,11 @@ class StyleFinderApp:
             ValueError: If the dataset is empty or invalid
         """
         # Check if dataset file exists and raise FileNotFoundError if not
-        if not os.path.exists(datase_path):
-            raise FileNotFoundError(f"Dataset file not found: {datase_path}")
+        if not os.path.exists(dataset_path):
+            raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
             
         # Load the dataset
-        self.data = pd.read_pickle(datase_path)
+        self.data = pd.read_pickle(dataset_path)
         
         # Check if dataset is empty and raise ValueError if it is
         if self.data.empty:
