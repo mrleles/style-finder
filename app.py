@@ -30,15 +30,30 @@ class StyleFinderApp:
             FileNotFoundError: If the dataset file is not found
             ValueError: If the dataset is empty or invalid
         """
-        # TODO: Check if dataset file exists and raise FileNotFoundError if not
+        # Check if dataset file exists and raise FileNotFoundError if not
+        if not os.path.exists(datase_path):
+            raise FileNotFoundError(f"Dataset file not found: {datase_path}")
             
-        # TODO: Load the dataset
+        # Load the dataset
+        self.data = pd.read_pickle(datase_path)
         
-        # TODO: Check if dataset is empty and raise ValueError if it is
+        # Check if dataset is empty and raise ValueError if it is
+        if self.data.empty:
+            raise ValueError("The loaded dataset is empty")
         
-        # TODO: Initialize image processor component
+        # Initialize image processor component
+        self.image_processor = ImageProcessor(
+            image_size=config.IMAGE_SIZE,
+            norm_mean=config.NORMALIZATION_MEAN,
+            norm_std=config.NORMALIZATION_STD
+        )
         
-        # TODO: Initialize LLM service component
+        # Initialize LLM service component
+        self.llm_service = LlamaVisionService(
+            model_id=config.LLAMA_MODEL_ID,
+            project_id=config.PROJECT_ID,
+            region=config.REGION
+        )
         
         # TODO: Initialize search service component if API key is provided
 
@@ -52,27 +67,53 @@ class StyleFinderApp:
         Returns:
             str: Formatted response with fashion analysis
         """
-        # TODO: Save the image temporarily if it's not already a file path
+        # Save the image temporarily if it's not already a file path
+        if not isinstance(image, str):
+            temp_file = NamedTemporaryFile(delete=False, suffix=".jpg")
+            image_path = temp_file.name
+            image.save(image_path)
+        else:
+            image_path = image
         
-        # TODO: Encode the image using the image processor
+        # Encode the image using the image processor
+        user_encoding = self.image_processor.encode_image(image_path, is_url=False)
         
-        # TODO: Check if encoding was successful
+        # Check if encoding was successful
+        if user_encoding['vector'] is None:
+            return "Error: Unable to process the image. Please try another image."
         
-        # TODO: Find the closest match in the dataset
+        # Find the closest match in the dataset
+        closest_row, similarity_score = self.image_processor.find_closest_match(user_encoding['vector'], self.data)
         
-        # TODO: Check if a match was found
+        # Check if a match was found and Log match details
+        if closest_row is None:
+            return "Error: Unable to find a match. Please try another image."
         
-        # TODO: Log match details
+        # Get all related items for the matched image
+        all_items = get_all_items_for_image(closest_row['Image URL'], self.data)
         
-        # TODO: Get all related items for the matched image
+        # Check if items were found
+        if all_items.empty:
+            return "Error: No items found for the matched image."
         
-        # TODO: Check if items were found
+        # Generate fashion response using the LLM service
+        bot_response = self.llm_service.generate_fashion_response(
+            user_image_base64=user_encoding['base64'],
+            matched_row=closest_row,
+            all_items=all_items,
+            similarity_score=similarity_score,
+            threshold=config.SIMILARITY_THRESHOLD
+        )
         
-        # TODO: Generate fashion response using the LLM service
+        # Clean up temporary files
+        if not isinstance(image, str):
+            try:
+                os.unlink(image_path)
+            except:
+                pass
         
-        # TODO: Clean up temporary files
-        
-        # TODO: Process and return the response
+        # Process and return the response
+        return process_response(bot_response)
 
 
 def create_gradio_interface(app):
@@ -85,25 +126,116 @@ def create_gradio_interface(app):
     Returns:
         gr.Blocks: Configured Gradio interface
     """
-    # TODO: Create Gradio Blocks interface
+    # Create Gradio Blocks interface
+    with gr.Blocks(theme=gr.themes.Soft(), title="Fashion Style Analyzer") as demo:
     
-    # TODO: Add introduction section
+    # Add introduction section
+    gr.Markdown(
+        """
+            # Fashion Style Analyzer
+            
+            Upload an image to analyze fashion elements and get detailed information about the items.
+            This application combines computer vision, vector similarity, and large language models 
+            to provide detailed fashion analysis.
+            """
+    )
     
-    # TODO: Add example images section
+    # Add example images section
+    gr.Markdown('### Example Images')
+    with gr.Row():
+        gr.Image(value="examples/test-1.png", label="Example 1", show_label=True, scale=1)
+        gr.Image(value="examples/test-2.png", label="Example 2", show_label=True, scale=1)
+        gr.Image(value="examples/test-3.png", label="Example 3", show_label=True, scale=1)
     
-    # TODO: Add example image buttons
+    # Add example image buttons
+    with gr.Row():
+        example1_btn = gr.Button("Use Example 1")
+        example2_btn = gr.Button("Use Example 2")
+        example3_btn = gr.Button("Use Example 3")
     
-    # TODO: Add image input, submit button, and status components
+    # Add image input, submit button, and status components
+    with gr.Row():
+        with gr.Column(scale=1):
+            image_input = gr.Image(
+                type="pil",
+                label="Upload Fashion Image"
+            )
+
+            submit_btn = gr.Button("Analyze Style", variant="primary")
+
+            status = gr.Markdown("Ready to analyze.")
     
-    # TODO: Add output display component
+    # Add output display component
+    with gr.Column(scale=2):
+        output = gr.Markdown(
+            label="Style Analysis Results",
+            height=700
+        )
     
-    # TODO: Configure submit button click event handlers
+    # Configure submit button click event handlers
+    submit_btn.click(
+        fn=lambda: "Analyzing image... This may take a few moments.",
+        inputs=None,
+        outputs=status
+    ).then(
+        fn=app.process_image,
+        inputs=[image_input],
+        outputs=output
+    ).then(
+        fn=lambda: "Analysis complete!",
+        inputs=None,
+        outputs=status
+    )
     
-    # TODO: Configure example image button event handlers
+    # Configure example image button event handlers
+    example1_btn.click(
+        fn=lambda: "examples/test-1.png",
+        inputs=None,
+        outputs=image_input
+    ).then(
+        fn=lambda: "Example 1 loaded. Click 'Analyze Style' to process.",
+        inputs=None,
+        outputs=status
+    )
+
+    example2_btn.click(
+        fn=lambda: "examples/test-2.png",
+        inputs=None,
+        outputs=image_input
+    ).then(
+        fn=lambda: "Example 2 loaded. Click 'Analyze Style' to process.",
+        inputs=None,
+        outputs=status
+    )
+
+    example3_btn.click(
+        fn=lambda: "examples/test-3.png",
+        inputs=None,
+        outputs=image_input
+    ).then(
+        fn=lambda: "Example 3 loaded. Click 'Analyze Style' to process.",
+        inputs=None,
+        outputs=status
+    )
     
-    # TODO: Add information about the application
+    # Add information about the application
+    gr.Markdown(
+        """
+        ### about This Application
+
+        This system analyzes fashion images using:
+
+        - **Image Encoding**: Converting fashion images into numerical vectors
+        - **Similarity Matching**: Finding visually similar items in a database
+        - **Advanced AI**: Generating detailed descriptions of fashion elements
+
+        The analyzer identifies garments, fabrics, colors, and styling details from images.
+        The database includes information on outfits with brand and pricing details
+        """
+    )
     
-    # TODO: Return the configured interface
+    # Return the configured interface
+    return demo
 
 if __name__ == "__main__":
     try:
