@@ -81,7 +81,7 @@ class LlamaVisionService:
                          {
                             "type": "image_url",
                             "image_url": {
-                                "url": "data:image/jpeg/base64," + encoded_image,
+                                "url": "data:image/jpeg;base64," + encoded_image,
                             }
                          }
                     ]
@@ -92,7 +92,7 @@ class LlamaVisionService:
             response = self.model.chat(messages=messages)
             
             # Extract and validate the response
-            content = response['choices'][0]['content']
+            content = response['choices'][0]['message']['content']
             logger.info("Received response with length: %d", len(content))
             
             # Check if response appears to be truncated
