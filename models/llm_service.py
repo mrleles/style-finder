@@ -76,7 +76,7 @@ class LlamaVisionService:
                     "content": [
                         {
                             "type": "text",
-                            "text": prompt:
+                            "text": prompt
                          },
                          {
                             "type": "image_url",
