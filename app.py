@@ -129,113 +129,113 @@ def create_gradio_interface(app):
     # Create Gradio Blocks interface
     with gr.Blocks(theme=gr.themes.Soft(), title="Fashion Style Analyzer") as demo:
     
-    # Add introduction section
-    gr.Markdown(
-        """
-            # Fashion Style Analyzer
-            
-            Upload an image to analyze fashion elements and get detailed information about the items.
-            This application combines computer vision, vector similarity, and large language models 
-            to provide detailed fashion analysis.
+        # Add introduction section
+        gr.Markdown(
             """
-    )
+                # Fashion Style Analyzer
+                
+                Upload an image to analyze fashion elements and get detailed information about the items.
+                This application combines computer vision, vector similarity, and large language models 
+                to provide detailed fashion analysis.
+                """
+        )
+        
+        # Add example images section
+        gr.Markdown('### Example Images')
+        with gr.Row():
+            gr.Image(value="examples/test-1.png", label="Example 1", show_label=True, scale=1)
+            gr.Image(value="examples/test-2.png", label="Example 2", show_label=True, scale=1)
+            gr.Image(value="examples/test-3.png", label="Example 3", show_label=True, scale=1)
+        
+        # Add example image buttons
+        with gr.Row():
+            example1_btn = gr.Button("Use Example 1")
+            example2_btn = gr.Button("Use Example 2")
+            example3_btn = gr.Button("Use Example 3")
+        
+        # Add image input, submit button, and status components
+        with gr.Row():
+            with gr.Column(scale=1):
+                image_input = gr.Image(
+                    type="pil",
+                    label="Upload Fashion Image"
+                )
     
-    # Add example images section
-    gr.Markdown('### Example Images')
-    with gr.Row():
-        gr.Image(value="examples/test-1.png", label="Example 1", show_label=True, scale=1)
-        gr.Image(value="examples/test-2.png", label="Example 2", show_label=True, scale=1)
-        gr.Image(value="examples/test-3.png", label="Example 3", show_label=True, scale=1)
+                submit_btn = gr.Button("Analyze Style", variant="primary")
     
-    # Add example image buttons
-    with gr.Row():
-        example1_btn = gr.Button("Use Example 1")
-        example2_btn = gr.Button("Use Example 2")
-        example3_btn = gr.Button("Use Example 3")
-    
-    # Add image input, submit button, and status components
-    with gr.Row():
-        with gr.Column(scale=1):
-            image_input = gr.Image(
-                type="pil",
-                label="Upload Fashion Image"
+                status = gr.Markdown("Ready to analyze.")
+        
+        # Add output display component
+        with gr.Column(scale=2):
+            output = gr.Markdown(
+                label="Style Analysis Results",
+                height=700
             )
-
-            submit_btn = gr.Button("Analyze Style", variant="primary")
-
-            status = gr.Markdown("Ready to analyze.")
-    
-    # Add output display component
-    with gr.Column(scale=2):
-        output = gr.Markdown(
-            label="Style Analysis Results",
-            height=700
+        
+        # Configure submit button click event handlers
+        submit_btn.click(
+            fn=lambda: "Analyzing image... This may take a few moments.",
+            inputs=None,
+            outputs=status
+        ).then(
+            fn=app.process_image,
+            inputs=[image_input],
+            outputs=output
+        ).then(
+            fn=lambda: "Analysis complete!",
+            inputs=None,
+            outputs=status
+        )
+        
+        # Configure example image button event handlers
+        example1_btn.click(
+            fn=lambda: "examples/test-1.png",
+            inputs=None,
+            outputs=image_input
+        ).then(
+            fn=lambda: "Example 1 loaded. Click 'Analyze Style' to process.",
+            inputs=None,
+            outputs=status
         )
     
-    # Configure submit button click event handlers
-    submit_btn.click(
-        fn=lambda: "Analyzing image... This may take a few moments.",
-        inputs=None,
-        outputs=status
-    ).then(
-        fn=app.process_image,
-        inputs=[image_input],
-        outputs=output
-    ).then(
-        fn=lambda: "Analysis complete!",
-        inputs=None,
-        outputs=status
-    )
+        example2_btn.click(
+            fn=lambda: "examples/test-2.png",
+            inputs=None,
+            outputs=image_input
+        ).then(
+            fn=lambda: "Example 2 loaded. Click 'Analyze Style' to process.",
+            inputs=None,
+            outputs=status
+        )
     
-    # Configure example image button event handlers
-    example1_btn.click(
-        fn=lambda: "examples/test-1.png",
-        inputs=None,
-        outputs=image_input
-    ).then(
-        fn=lambda: "Example 1 loaded. Click 'Analyze Style' to process.",
-        inputs=None,
-        outputs=status
-    )
-
-    example2_btn.click(
-        fn=lambda: "examples/test-2.png",
-        inputs=None,
-        outputs=image_input
-    ).then(
-        fn=lambda: "Example 2 loaded. Click 'Analyze Style' to process.",
-        inputs=None,
-        outputs=status
-    )
-
-    example3_btn.click(
-        fn=lambda: "examples/test-3.png",
-        inputs=None,
-        outputs=image_input
-    ).then(
-        fn=lambda: "Example 3 loaded. Click 'Analyze Style' to process.",
-        inputs=None,
-        outputs=status
-    )
+        example3_btn.click(
+            fn=lambda: "examples/test-3.png",
+            inputs=None,
+            outputs=image_input
+        ).then(
+            fn=lambda: "Example 3 loaded. Click 'Analyze Style' to process.",
+            inputs=None,
+            outputs=status
+        )
+        
+        # Add information about the application
+        gr.Markdown(
+            """
+            ### about This Application
     
-    # Add information about the application
-    gr.Markdown(
-        """
-        ### about This Application
-
-        This system analyzes fashion images using:
-
-        - **Image Encoding**: Converting fashion images into numerical vectors
-        - **Similarity Matching**: Finding visually similar items in a database
-        - **Advanced AI**: Generating detailed descriptions of fashion elements
-
-        The analyzer identifies garments, fabrics, colors, and styling details from images.
-        The database includes information on outfits with brand and pricing details
-        """
-    )
+            This system analyzes fashion images using:
     
-    # Return the configured interface
-    return demo
+            - **Image Encoding**: Converting fashion images into numerical vectors
+            - **Similarity Matching**: Finding visually similar items in a database
+            - **Advanced AI**: Generating detailed descriptions of fashion elements
+    
+            The analyzer identifies garments, fabrics, colors, and styling details from images.
+            The database includes information on outfits with brand and pricing details
+            """
+        )
+        
+        # Return the configured interface
+        return demo
 
 if __name__ == "__main__":
     try:
