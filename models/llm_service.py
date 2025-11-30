@@ -31,13 +31,29 @@ class LlamaVisionService:
             api_key (str, optional): API key for authentication
             max_tokens (int): Maximum tokens in the response
         """
-        # TODO: Set up authentication credentials
+        # Set up authentication credentials
+        credentials = Credentials(
+            url=f"https://{region}.ml.cloud.ibm.com",
+            api_key=api_key
+        )
         
-        # TODO: Initialize API client
+        # Initialize API client
+        self.client = APIClient(credentials)
         
-        # TODO: Define parameters for the model's behavior
+        # Define parameters for the model's behavior
+        params = TextChatParameters(
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens
+        )
         
-        # TODO: Initialize the model inference object
+        # Initialize the model inference object
+        self.model = ModelInference(
+            model_id=model_id,
+            credentials=credentials,
+            project_id=project_id,
+            params=params
+        )
     
     def generate_response(self, encoded_image, prompt):
         """
@@ -53,15 +69,38 @@ class LlamaVisionService:
         try:
             logger.info("Sending request to LLM with prompt length: %d", len(prompt))
             
-            # TODO: Create the messages object
+            # Create the messages object
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt:
+                         },
+                         {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": "data:image/jpeg/base64," + encoded_image,
+                            }
+                         }
+                    ]
+                }
+            ]
             
-            # TODO: Send the request to the model
+            # Send the request to the model
+            response = self.model.chat(messages=messages)
             
-            # TODO: Extract and validate the response
+            # Extract and validate the response
+            content = response['choices'][0]['content']
+            logger.info("Received response with length: %d", len(content))
             
-            # TODO: Check if response appears to be truncated
+            # Check if response appears to be truncated
+            if len(content) >= 7900:
+                logger.warning("Response may be truncated (length: %d)", len(content))
             
-            # TODO: Return the content
+            # Return the content
+            return content
             
         except Exception as e:
             logger.error("Error generating response: %s", str(e))
@@ -82,16 +121,56 @@ class LlamaVisionService:
         Returns:
             str: Detailed fashion response
         """
-        # TODO: Generate a list of items with prices and links
+        # Generate a list of items with prices and links
+        items_list = []
+        for _, row in all_items.iterrows():
+            item_str = f"{row['Item Name']} (${row['Price']}): {row['Link']}"
+        # Join items with clear separators
+        items_description = "\n".join([f"- {item}" for item in items_list])
         
-        # TODO: Join items with clear separators
+        # Create prompt based on similarity threshold
+        if similarity_score >= threshold:
+            # Simplified prompt focused on professional fashion analysis
+            assistant_prompt = (
+                f"You're conducting a professional retail catalog analysis. "
+                f"This image shows standard clothing items available in department stores. "
+                f"Focus exclusively on professional fashion analysis for a clothing retailer. "
+                f"ITEM DETAILS (always include this section in your response):\n{items_description}\n\n"
+                "Please:\n"
+                "1. Identify and describe the clothing items objectively (colors, patterns, materials)\n"
+                "2. Categorize the overall style (business, casual, etc.)\n"
+                "3. Include the ITEM DETAILS section at the end\n\n"
+                "This is for a professional retail catalog. Use formal, clinical language."
+            )
+        else:
+            # Similar approach for non-exact matches
+            assistant_prompt = (
+                f"You're conducting a professional retail catalog analysis. "
+                f"This image shows standard clothing items available in department stores. "
+                f"Focus exclusively on professional fashion analysis for a clothing retailer. "
+                f"SIMILAR ITEMS (always include this section in your response):\n{items_description}\n\n"
+                "Please:\n"
+                "1. Note these are similar but not exact items\n"
+                "2. Identify clothing elements objectively (colors, patterns, materials)\n" 
+                "3. Include the SIMILAR ITEMS section at the end\n\n"
+                "This is for a professional retail catalog. Use formal, clinical language."
+            )
         
-        # TODO: Create prompt based on similarity threshold
+        # Send the prompt to the model
+        response = self.generate_response(user_image_base64, assistant_prompt)
+
+        # Check if response is incomplete and create basic response if needed
+        if len(response) < 100:
+            logger.info("Response appears incomplete, creating basic response")
+            section_header = "ITEM DETAILS:" if similarity_score >= threshold else "SIMILAR ITEMS:"
+            response = f"# Fashion Analysis\n\nThis outfit features a collection of carefully coordinated pieces.\n\n{section_header}\n{items_description}"
         
-        # TODO: Send the prompt to the model
+        # Ensure the items list is included
+        elif "ITEM DETAILS:" not in response and "SIMILAR ITEMS:" not in response:
+            logger.info("Item details section missing from response")
+            # Append to existing response
+            section_header = "ITEM DETAILS:" if similarity_score >= threshold else "SIMILAR ITEMS:"
+            response += f"\n\n{section_header}\n{items_description}"
         
-        # TODO: Check if response is incomplete and create basic response if needed
-        
-        # TODO: Ensure the items list is included
-        
-        # TODO: Return the final response
+        # Return the final response
+        return response
